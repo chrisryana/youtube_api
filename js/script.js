@@ -98,5 +98,19 @@ more.addEventListener('click', () => {
       card.classList.remove('videos__item-active');
     }, 10);
   }
+  sliceTitle('.videos__item-descr', 100);
 });
 
+function sliceTitle(selector, count) {
+  document.querySelectorAll('.videos__item-descr').forEach(item => {
+    item.textContent.trim();
+    if (item.textContent.length < count) {
+      return;
+    } else {
+      const str = item.textContent.slice(0, count + 1) + '...';
+      item.textContent = str;
+    }
+  })
+}
+
+sliceTitle('.videos__item-descr', 100);
