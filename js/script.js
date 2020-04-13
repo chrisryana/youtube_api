@@ -2,7 +2,8 @@ const switcher = document.querySelector('#cbx'),
   more = document.querySelector('.more'),
   modal = document.querySelector('.modal'),
   videos = document.querySelectorAll('.videos__item'),
-  videosWrapper = document.querySelector('.videos__wrapper');
+  videosWrapper = document.querySelector('.videos__wrapper'),
+  API_KEY = 'Ваш api key';
 let player;
 
 function bindSlideToggle(trigger, boxBody, content, openClass) {
@@ -10,10 +11,10 @@ function bindSlideToggle(trigger, boxBody, content, openClass) {
     'element': document.querySelector(trigger),
     'active': false,
   };
+
   const box = document.querySelector(boxBody),
     boxContent = document.querySelector(content);
 
-  //ссылка на объект переменной let выше
   button.element.addEventListener('click', () => {
     if (button.active === false) { // Проверяем открыто ли меню
       button.active = true;
@@ -26,11 +27,11 @@ function bindSlideToggle(trigger, boxBody, content, openClass) {
     }
   });
 }
+
 bindSlideToggle('.hamburger', '[data-slide="nav"]', '.header__menu', 'slide-active');
 
 function switchMode() {
   if (night === false) {
-    //document.body.style.backgroundColor = '#000';
     night = true;
     document.body.classList.add('night');
     document.querySelectorAll('.hamburger > line').forEach(item => {
@@ -62,13 +63,14 @@ function switchMode() {
 }
 
 let night = false;
+
 switcher.addEventListener('change', () => {
   switchMode();
 });
 
 function start() {
   gapi.client.init({
-    'apiKey': ' ',
+    'apiKey': API_KEY,
     'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'],
   }).then(function() {
     return gapi.client.youtube.playlistItems.list({
@@ -115,7 +117,7 @@ more.addEventListener('click', () => {
 
 function search(target) {
   gapi.client.init({
-    'apiKey': 'AIzaSyC_WMac4RmByKjLoWybZ9AHGPcOPqpJdtY',
+    'apiKey': API_KEY,
     'discoveryDocs': ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'],
   }).then(function() {
     return gapi.client.youtube.search.list({
@@ -124,44 +126,50 @@ function search(target) {
       'q': `${target}`,
       'type': '',
     });
-  }).then(function(response){
+  }).then(function(response) {
     console.log(response.result);
-    //videosWrapper.innerHTML = '';
     while (videosWrapper.firstChild) {
       videosWrapper.removeChild(videosWrapper.firstChild);
     }
 
-    response.result.items.forEach(item => {
-      let card = document.createElement('a');
-      card.classList.add('videos__item', 'videos__item-active');
-      card.setAttribute('data-url', item.id.videoId);
-      card.innerHTML = `
-        <img src="${item.snippet.thumbnails.high.url}" alt="thumb">
-        <div class="videos__item-descr">
-          ${item.snippet.title}
-        </div>
-        <div class="videos__item-views">
-          2.7 тыс. просмотров
-        </div>
-      `;
-      videosWrapper.appendChild(card);
-      setTimeout(() => {
-        card.classList.remove('videos__item-active');
-      }, 10);
-      if (night) {
-        card.querySelector('.videos__item-descr').style.color = '#fff';
-        card.querySelector('.videos__item-views').style.color = '#fff';
-      }
-    });
-    sliceTitle('.videos__item-descr', 100);
-    bindModal(document.querySelectorAll('.videos__item'));
+    console.log(response.result);
+
+    if (response.result.items) {
+      // в результаты поиска попадают каналы пользователей, необходимо отфильтровать
+      const videos = response.result.items.filter((videoItem) => videoItem.id.kind.split('#')[1] === 'video');
+      videos.forEach(item => {
+        let card = document.createElement('a');
+        card.classList.add('videos__item', 'videos__item-active');
+        card.setAttribute('data-url', item.id.videoId);
+        card.innerHTML = `
+          <img src="${item.snippet.thumbnails.high.url}" alt="thumb">
+          <div class="videos__item-descr">
+            ${item.snippet.title}
+          </div>
+          <div class="videos__item-views">
+            2.7 тыс. просмотров
+          </div>
+        `;
+        videosWrapper.appendChild(card);
+        setTimeout(() => {
+          card.classList.remove('videos__item-active');
+        }, 10);
+        if (night) {
+          card.querySelector('.videos__item-descr').style.color = '#fff';
+          card.querySelector('.videos__item-views').style.color = '#fff';
+        }
+      });
+      sliceTitle('.videos__item-descr', 100);
+      bindModal(document.querySelectorAll('.videos__item'));
+    }
   });
 
 }
 
 document.querySelector('.search').addEventListener('submit', (e) => {
   e.preventDefault();
-  gapi.load('client', () => {search(document.querySelector('.search > input').value);});
+  const searchValue = document.querySelector('.search > input').value;
+  gapi.load('client', () => {search(searchValue);});
   document.querySelector('.search > input').value = '';
 });
 
@@ -199,17 +207,6 @@ function bindModal(cards) {
   });
 }
 
-//bindModal(videos); //  Для карточек которые уже есть на странице, не работает для подгружаемых изза перебора массива
-
-// function bindNewModal(cards) {
-//   cards.addEventListener('click', (e) => {
-//     e.preventDefault();
-//     const id = cards.getAttribute('data-url');
-//     loadVideo(id);
-//     openModal();
-//   });
-// } // Для подгружаемых карточек
-
 modal.addEventListener('click', (e) => {
   if (!e.target.classList.contains('modal__body')) {
     closeModal();
@@ -229,7 +226,6 @@ function createVideo() {
   var firstScriptTag = document.getElementsByTagName('script')[0];
   firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-  // Лучше через промисы
   setTimeout(() => {
     player = new YT.Player('frame', {
       height: '100%',
